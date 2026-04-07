@@ -1,0 +1,715 @@
+{% extends "base.html" %}
+
+{% block title %}{{ switch.name }} - Chi tiết{% endblock %}
+
+{% block extra_css %}
+<style>
+    .node-header {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .node-icon-large {
+        width: 80px;
+        height: 80px;
+        background: var(--bg-tertiary);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        color: var(--text-secondary);
+        transition: var(--transition);
+    }
+
+    .node-icon-large.active {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+        box-shadow: 0 0 30px var(--success-glow);
+    }
+
+    .node-info h1 {
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+
+    .node-status-large {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .status-badge-large {
+        padding: 8px 20px;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .status-badge-large.on {
+        background: rgba(34, 197, 94, 0.2);
+        color: var(--success);
+    }
+
+    .status-badge-large.off {
+        background: rgba(107, 107, 128, 0.2);
+        color: var(--text-muted);
+    }
+
+    .node-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 12px;
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    @media (max-width: 1000px) {
+        .content-grid { grid-template-columns: 1fr; }
+    }
+
+    .detail-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+    }
+
+    .detail-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .detail-card-title {
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .detail-card-title i {
+        color: var(--accent-primary);
+    }
+
+    .stats-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius);
+    }
+
+    .stat-item-label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--text-secondary);
+    }
+
+    .stat-item-label i {
+        width: 20px;
+    }
+
+    .stat-item-value {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    /* Schedule List */
+    .schedule-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .schedule-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius);
+        transition: var(--transition);
+    }
+
+    .schedule-item:hover {
+        background: var(--bg-secondary);
+    }
+
+    .schedule-time {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--accent-primary);
+    }
+
+    .schedule-info {
+        flex: 1;
+        margin-left: 20px;
+    }
+
+    .schedule-action {
+        font-weight: 500;
+    }
+
+    .schedule-repeat {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    .schedule-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-muted);
+    }
+
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    /* History List */
+    .history-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .history-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .history-item:last-child {
+        border-bottom: none;
+    }
+
+    .history-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .history-icon.on {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+    }
+
+    .history-icon.off {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+    }
+
+    .history-content {
+        flex: 1;
+    }
+
+    .history-action {
+        font-weight: 500;
+    }
+
+    .history-time {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .history-duration {
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    /* Quick Timer Grid */
+    .quick-timer-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .quick-timer-btn {
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: center;
+    }
+
+    .quick-timer-btn:hover {
+        border-color: var(--accent-primary);
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .quick-timer-btn span {
+        display: block;
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    /* Node Chart */
+    .node-chart-container {
+        height: 300px;
+        margin-top: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="node-header">
+    <div class="node-icon-large {% if switch.status == 'ON' %}active{% endif %}" id="nodeIcon">
+        <i class="fas fa-ethernet"></i>
+    </div>
+    <div class="node-info">
+        <h1 id="nodeName">{{ switch.name }}</h1>
+        <div class="node-status-large">
+            <span class="status-badge-large {% if switch.status == 'ON' %}on{% else %}off{% endif %}" id="nodeStatus">
+                <i class="fas fa-{% if switch.status == 'ON' %}check-circle{% else %}times-circle{% endif %}"></i>
+                {{ switch.status }}
+            </span>
+            {% if switch.auto_off_minutes %}
+            <span class="badge badge-warning">
+                <i class="fas fa-stopwatch"></i>
+                Tự động tắt sau {{ switch.auto_off_minutes }} phút
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="node-actions">
+        <button class="btn btn-{% if switch.status == 'ON' %}danger{% else %}success{% endif %} btn-lg" onclick="toggleSwitch({{ switch.id }})" id="toggleBtn">
+            <i class="fas fa-power-off"></i>
+            {{ 'Tắt' if switch.status == 'ON' else 'Bật' }}
+        </button>
+    </div>
+</div>
+
+<div class="content-grid">
+    <!-- Left Column -->
+    <div>
+        <!-- Statistics -->
+        <div class="detail-card mb-3">
+            <div class="detail-card-header">
+                <h3 class="detail-card-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Thống kê
+                </h3>
+            </div>
+            <div class="stats-list">
+                <div class="stat-item">
+                    <div class="stat-item-label">
+                        <i class="fas fa-clock"></i>
+                        Tổng thời gian hoạt động
+                    </div>
+                    <div class="stat-item-value" id="totalUptime">
+                        {{ (switch.uptime // 3600) }}h {{ ((switch.uptime % 3600) // 60) }}m
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-item-label">
+                        <i class="fas fa-calendar"></i>
+                        Bật lần cuối
+                    </div>
+                    <div class="stat-item-value" id="lastOn">
+                        {{ switch.last_on.strftime('%d/%m/%Y %H:%M') if switch.last_on else 'Chưa có' }}
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-item-label">
+                        <i class="fas fa-sync"></i>
+                        Cập nhật lần cuối
+                    </div>
+                    <div class="stat-item-value">
+                        {{ switch.last_update.strftime('%H:%M:%S') if switch.last_update else '-' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Timer -->
+        <div class="detail-card mb-3">
+            <div class="detail-card-header">
+                <h3 class="detail-card-title">
+                    <i class="fas fa-stopwatch"></i>
+                    Hẹn giờ nhanh
+                </h3>
+            </div>
+            <p class="text-muted">Bật node với thời gian tự động tắt:</p>
+            <div class="quick-timer-grid">
+                <button class="quick-timer-btn" onclick="setTimer({{ switch.id }}, 5)">5<span>phút</span></button>
+                <button class="quick-timer-btn" onclick="setTimer({{ switch.id }}, 15)">15<span>phút</span></button>
+                <button class="quick-timer-btn" onclick="setTimer({{ switch.id }}, 30)">30<span>phút</span></button>
+                <button class="quick-timer-btn" onclick="setTimer({{ switch.id }}, 60)">1<span>giờ</span></button>
+                <button class="quick-timer-btn" onclick="setTimer({{ switch.id }}, 120)">2<span>giờ</span></button>
+                <button class="quick-timer-btn" onclick="setTimer({{ switch.id }}, 240)">4<span>giờ</span></button>
+            </div>
+            <div class="mt-2">
+                <div class="flex gap-2">
+                    <input type="number" id="customMinutes" class="form-control" placeholder="Nhập số phút" min="1">
+                    <button class="btn btn-primary" onclick="customTimerNode()">Áp dụng</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Chart -->
+        <div class="detail-card">
+            <div class="detail-card-header">
+                <h3 class="detail-card-title">
+                    <i class="fas fa-chart-line"></i>
+                    Hoạt động hôm nay
+                </h3>
+            </div>
+            <div class="node-chart-container">
+                <canvas id="nodeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div>
+        <!-- Schedules -->
+        <div class="detail-card mb-3">
+            <div class="detail-card-header">
+                <h3 class="detail-card-title">
+                    <i class="fas fa-clock"></i>
+                    Lịch hẹn
+                </h3>
+                <button class="btn btn-primary btn-sm" onclick="openModal('addScheduleModal')">
+                    <i class="fas fa-plus"></i> Thêm
+                </button>
+            </div>
+            
+            {% if schedules %}
+            <div class="schedule-list">
+                {% for schedule in schedules %}
+                <div class="schedule-item" id="schedule-{{ schedule.id }}">
+                    <div class="schedule-time">{{ schedule.time.strftime('%H:%M') }}</div>
+                    <div class="schedule-info">
+                        <div class="schedule-action">
+                            <span class="badge {% if schedule.action == 'on' %}badge-success{% else %}badge-danger{% endif %}">
+                                {{ 'BẬT' if schedule.action == 'on' else 'TẮT' }}
+                            </span>
+                            {% if schedule.auto_off %}
+                            <span class="badge badge-warning">Tự tắt sau {{ schedule.auto_off }} phút</span>
+                            {% endif %}
+                        </div>
+                        <div class="schedule-repeat">
+                            {% if schedule.repeat_type == 'daily' %}Hàng ngày
+                            {% elif schedule.repeat_type == 'weekdays' %}Các ngày trong tuần
+                            {% elif schedule.repeat_type == 'weekends' %}Cuối tuần
+                            {% elif schedule.repeat_type == 'once' %}Một lần
+                            {% else %}{{ schedule.repeat_type }}{% endif %}
+                            {% if not schedule.active %}<span class="text-danger">(Đã tắt)</span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="schedule-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="deleteSchedule({{ switch.id }}, {{ schedule.id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-times"></i>
+                <p>Chưa có lịch hẹn nào</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- History -->
+        <div class="detail-card">
+            <div class="detail-card-header">
+                <h3 class="detail-card-title">
+                    <i class="fas fa-history"></i>
+                    Lịch sử gần đây
+                </h3>
+                <a href="{{ url_for('main.history') }}?switch_id={{ switch.id }}" class="btn btn-secondary btn-sm">
+                    Xem tất cả
+                </a>
+            </div>
+            
+            {% if history %}
+            <div class="history-list">
+                {% for item in history %}
+                <div class="history-item">
+                    <div class="history-icon {% if 'ON' in item.action %}on{% else %}off{% endif %}">
+                        <i class="fas fa-{% if 'ON' in item.action %}power-off{% else %}stop{% endif %}"></i>
+                    </div>
+                    <div class="history-content">
+                        <div class="history-action">{{ item.action }}</div>
+                        <div class="history-time">
+                            {{ item.timestamp.strftime('%d/%m %H:%M:%S') }}
+                            <span class="badge badge-info" style="font-size: 10px;">{{ item.triggered_by or 'N/A' }}</span>
+                        </div>
+                    </div>
+                    {% if item.duration %}
+                    <div class="history-duration">
+                        {{ (item.duration // 3600) }}h {{ ((item.duration % 3600) // 60) }}m
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-history"></i>
+                <p>Chưa có lịch sử</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="modal-overlay" id="addScheduleModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Thêm lịch hẹn mới</h3>
+            <button class="modal-close" onclick="closeModal('addScheduleModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="scheduleForm">
+            <div class="form-group">
+                <label class="form-label">Thời gian</label>
+                <input type="time" id="scheduleTime" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Hành động</label>
+                <select id="scheduleAction" class="form-control" onchange="toggleAutoOff()">
+                    <option value="on">Bật</option>
+                    <option value="off">Tắt</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="autoOffGroup">
+                <label class="form-label">Tự động tắt sau (phút) - tùy chọn</label>
+                <input type="number" id="scheduleAutoOff" class="form-control" placeholder="Để trống nếu không cần" min="1">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Lặp lại</label>
+                <select id="scheduleRepeat" class="form-control">
+                    <option value="once">Một lần</option>
+                    <option value="daily">Hàng ngày</option>
+                    <option value="weekdays">Các ngày trong tuần (T2-T6)</option>
+                    <option value="weekends">Cuối tuần (T7-CN)</option>
+                </select>
+            </div>
+            
+            <div class="flex gap-2 mt-3">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addScheduleModal')" style="flex:1;">Hủy</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;">
+                    <i class="fas fa-plus"></i> Thêm lịch
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const switchId = {{ switch.id }};
+    let nodeChart;
+
+    // Toggle auto-off field
+    function toggleAutoOff() {
+        const action = document.getElementById('scheduleAction').value;
+        document.getElementById('autoOffGroup').style.display = action === 'on' ? 'block' : 'none';
+    }
+
+    // Custom timer for this node
+    function customTimerNode() {
+        const minutes = parseInt(document.getElementById('customMinutes').value);
+        if (!minutes || minutes < 1) {
+            showToast('Vui lòng nhập số phút hợp lệ!', 'error');
+            return;
+        }
+        setTimer(switchId, minutes);
+    }
+
+    // Add schedule
+    document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const data = {
+            time: document.getElementById('scheduleTime').value,
+            action: document.getElementById('scheduleAction').value,
+            repeat: document.getElementById('scheduleRepeat').value
+        };
+        
+        const autoOff = document.getElementById('scheduleAutoOff').value;
+        if (autoOff && data.action === 'on') {
+            data.auto_off = parseInt(autoOff);
+        }
+        
+        try {
+            const response = await fetch(`/api/switch/${switchId}/schedule`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã thêm lịch hẹn!', 'success');
+                closeModal('addScheduleModal');
+                location.reload();
+            } else {
+                showToast(result.error || 'Có lỗi xảy ra!', 'error');
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    });
+
+    // Delete schedule
+    async function deleteSchedule(switchId, scheduleId) {
+        if (!confirm('Bạn có chắc muốn xóa lịch hẹn này?')) return;
+        
+        try {
+            const response = await fetch(`/api/switch/${switchId}/schedule/${scheduleId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã xóa lịch hẹn!', 'success');
+                document.getElementById(`schedule-${scheduleId}`).remove();
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+
+    // Initialize chart
+    function initNodeChart() {
+        const ctx = document.getElementById('nodeChart').getContext('2d');
+        
+        nodeChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                datasets: [{
+                    label: 'Phút hoạt động',
+                    data: Array(24).fill(0),
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#6b6b80' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 60,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { 
+                            color: '#6b6b80',
+                            callback: v => v + 'm'
+                        }
+                    }
+                },
+                animation: {
+                    duration: 750
+                }
+            }
+        });
+        
+        loadNodeChartData();
+    }
+
+    async function loadNodeChartData() {
+        try {
+            const response = await fetch(`/api/stats/hourly?switch_id=${switchId}`);
+            const data = await response.json();
+            
+            if (data.stats[switchId]) {
+                nodeChart.data.datasets[0].data = data.stats[switchId].data;
+                nodeChart.update('active');
+            }
+        } catch (error) {
+            console.error('Error loading chart:', error);
+        }
+    }
+
+    // Update UI on socket events
+    socket.on('switch_update', (data) => {
+        if (data.id === switchId) {
+            const icon = document.getElementById('nodeIcon');
+            const status = document.getElementById('nodeStatus');
+            const toggleBtn = document.getElementById('toggleBtn');
+            
+            if (data.status === 'ON') {
+                icon.classList.add('active');
+                status.className = 'status-badge-large on';
+                status.innerHTML = '<i class="fas fa-check-circle"></i> ON';
+                toggleBtn.className = 'btn btn-danger btn-lg';
+                toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Tắt';
+            } else {
+                icon.classList.remove('active');
+                status.className = 'status-badge-large off';
+                status.innerHTML = '<i class="fas fa-times-circle"></i> OFF';
+                toggleBtn.className = 'btn btn-success btn-lg';
+                toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Bật';
+            }
+        }
+    });
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleAutoOff();
+        initNodeChart();
+    });
+</script>
+{% endblock %}

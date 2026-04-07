@@ -1,0 +1,849 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Switch Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Stats Cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 1200px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: 1fr; }
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+
+    .stat-icon.green {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+    }
+
+    .stat-icon.red {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+    }
+
+    .stat-icon.blue {
+        background: rgba(59, 130, 246, 0.15);
+        color: var(--info);
+    }
+
+    .stat-icon.purple {
+        background: rgba(139, 92, 246, 0.15);
+        color: var(--accent-secondary);
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    /* Switch Cards */
+    .switches-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+
+    .switches-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 1400px) {
+        .switches-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 1000px) {
+        .switches-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+        .switches-grid { grid-template-columns: 1fr; }
+    }
+
+    .switch-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .switch-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: var(--text-muted);
+        transition: var(--transition);
+    }
+
+    .switch-card.active::before {
+        background: var(--success);
+        box-shadow: 0 0 20px var(--success-glow);
+    }
+
+    .switch-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .switch-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .switch-name {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .switch-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--text-secondary);
+        transition: var(--transition);
+    }
+
+    .switch-card.active .switch-icon {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+    }
+
+    .switch-title {
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .switch-status {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .switch-info {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 14px;
+    }
+
+    .info-label {
+        color: var(--text-secondary);
+    }
+
+    .info-value {
+        font-weight: 500;
+    }
+
+    .switch-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .switch-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* Timer Modal Styles */
+    .timer-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .timer-btn {
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .timer-btn:hover {
+        border-color: var(--accent-primary);
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .timer-btn span {
+        display: block;
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    .custom-timer {
+        display: flex;
+        gap: 12px;
+    }
+
+    .custom-timer input {
+        flex: 1;
+    }
+
+    /* Chart Container */
+    .chart-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 32px;
+    }
+
+    .chart-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+
+    .chart-title {
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .chart-controls {
+        display: flex;
+        gap: 12px;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        width: 100%;
+    }
+
+    /* Real-time indicator */
+    .realtime-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .realtime-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--success);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    /* Activity Timeline */
+    .timeline-grid {
+        display: grid;
+        grid-template-columns: repeat(24, 1fr);
+        gap: 2px;
+        margin-top: 16px;
+    }
+
+    .timeline-hour {
+        height: 40px;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        position: relative;
+        transition: var(--transition);
+    }
+
+    .timeline-hour.active {
+        background: rgba(34, 197, 94, 0.3);
+    }
+
+    .timeline-hour:hover {
+        transform: scaleY(1.2);
+    }
+
+    .timeline-hour::after {
+        content: attr(data-hour);
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: var(--text-muted);
+    }
+
+    .timeline-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--success);
+        border-radius: 4px;
+        transition: height 0.5s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Quản lý và giám sát hệ thống chuyển mạch Ethernet</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon green">
+            <i class="fas fa-power-off"></i>
+        </div>
+        <div>
+            <div class="stat-value" id="activeCount">0</div>
+            <div class="stat-label">Đang hoạt động</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red">
+            <i class="fas fa-plug"></i>
+        </div>
+        <div>
+            <div class="stat-value" id="inactiveCount">8</div>
+            <div class="stat-label">Không hoạt động</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div>
+            <div class="stat-value" id="scheduleCount">0</div>
+            <div class="stat-label">Lịch hẹn</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">
+            <i class="fas fa-history"></i>
+        </div>
+        <div>
+            <div class="stat-value" id="totalUptime">0h</div>
+            <div class="stat-label">Tổng thời gian hoạt động</div>
+        </div>
+    </div>
+</div>
+
+<!-- Switches Grid -->
+<div class="switches-header">
+    <h2>Các Node</h2>
+    <div class="flex gap-2">
+        <span class="realtime-indicator">
+            <span class="realtime-dot"></span>
+            Real-time
+        </span>
+        <button class="btn btn-danger" onclick="turnOffAll()">
+            <i class="fas fa-power-off"></i> Tắt tất cả
+        </button>
+    </div>
+</div>
+
+<div class="switches-grid" id="switchesGrid">
+    {% for switch in switches %}
+    <div class="switch-card {% if switch.status == 'ON' %}active{% endif %}" id="switch-card-{{ switch.id }}">
+        <div class="switch-header">
+            <div class="switch-name">
+                <div class="switch-icon">
+                    <i class="fas fa-ethernet"></i>
+                </div>
+                <div>
+                    <div class="switch-title">{{ switch.name }}</div>
+                    <div class="switch-status">
+                        <span class="status-dot {% if switch.status == 'ON' %}on{% else %}off{% endif %}" data-status-dot="{{ switch.id }}"></span>
+                        <span data-status-text="{{ switch.id }}" class="badge {% if switch.status == 'ON' %}badge-success{% else %}badge-danger{% endif %}">{{ switch.status }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="switch-toggle {% if switch.status == 'ON' %}on{% endif %}" data-switch-id="{{ switch.id }}" onclick="toggleSwitch({{ switch.id }})"></div>
+        </div>
+        
+        <div class="switch-info">
+            <div class="info-row">
+                <span class="info-label">Uptime</span>
+                <span class="info-value" data-uptime="{{ switch.id }}">{{ (switch.uptime // 3600) }}h {{ ((switch.uptime % 3600) // 60) }}m</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Bật lần cuối</span>
+                <span class="info-value" data-last-on="{{ switch.id }}">{{ switch.last_on.strftime('%H:%M') if switch.last_on else '-' }}</span>
+            </div>
+            {% if switch.auto_off_minutes %}
+            <div class="info-row">
+                <span class="info-label">Tự động tắt</span>
+                <span class="info-value text-warning" data-auto-off="{{ switch.id }}">{{ switch.auto_off_minutes }} phút</span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="switch-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openTimerModal({{ switch.id }})">
+                <i class="fas fa-stopwatch"></i> Hẹn giờ
+            </button>
+            <a href="{{ url_for('main.node_detail', node_id=switch.id) }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-cog"></i> Chi tiết
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Activity Chart -->
+<div class="chart-card">
+    <div class="chart-header">
+        <div>
+            <h3 class="chart-title">Biểu đồ hoạt động theo giờ</h3>
+            <p class="text-muted" style="font-size: 14px; margin-top: 4px;">Thống kê thời gian hoạt động của các node trong ngày</p>
+        </div>
+        <div class="chart-controls">
+            <input type="date" id="chartDate" class="form-control" style="width: auto;" onchange="loadChartData()">
+            <select id="chartSwitch" class="form-control" style="width: auto;" onchange="loadChartData()">
+                <option value="">Tất cả nodes</option>
+                {% for switch in switches %}
+                <option value="{{ switch.id }}">{{ switch.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="chart-container">
+        <canvas id="activityChart"></canvas>
+    </div>
+</div>
+
+<!-- Timer Modal -->
+<div class="modal-overlay" id="timerModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Hẹn giờ tự động tắt</h3>
+            <button class="modal-close" onclick="closeModal('timerModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <input type="hidden" id="timerSwitchId">
+        <p class="text-muted mb-2">Chọn thời gian tự động tắt:</p>
+        
+        <div class="timer-options">
+            <button class="timer-btn" onclick="quickTimer(5)">5<span>phút</span></button>
+            <button class="timer-btn" onclick="quickTimer(15)">15<span>phút</span></button>
+            <button class="timer-btn" onclick="quickTimer(30)">30<span>phút</span></button>
+            <button class="timer-btn" onclick="quickTimer(60)">1<span>giờ</span></button>
+            <button class="timer-btn" onclick="quickTimer(120)">2<span>giờ</span></button>
+            <button class="timer-btn" onclick="quickTimer(240)">4<span>giờ</span></button>
+        </div>
+        
+        <p class="text-muted mb-1">Hoặc nhập thời gian tùy chỉnh:</p>
+        <div class="custom-timer">
+            <input type="number" id="customMinutes" class="form-control" placeholder="Số phút" min="1" max="1440">
+            <button class="btn btn-primary" onclick="customTimer()">
+                <i class="fas fa-check"></i> Áp dụng
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Chart setup
+    let activityChart;
+    const chartColors = [
+        'rgba(99, 102, 241, 0.8)',
+        'rgba(139, 92, 246, 0.8)',
+        'rgba(34, 197, 94, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
+        'rgba(245, 158, 11, 0.8)',
+        'rgba(239, 68, 68, 0.8)',
+        'rgba(236, 72, 153, 0.8)',
+        'rgba(20, 184, 166, 0.8)'
+    ];
+
+    // Initialize chart
+    function initChart() {
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        
+        activityChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`),
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#a0a0b0',
+                            padding: 20,
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 30, 53, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#a0a0b0',
+                        borderColor: 'rgba(99, 102, 241, 0.3)',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw} phút`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#6b6b80',
+                            font: { size: 11 }
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        max: 60,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#6b6b80',
+                            font: { size: 11 },
+                            callback: function(value) {
+                                return value + ' phút';
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+    }
+
+    // Load chart data
+    async function loadChartData() {
+        const date = document.getElementById('chartDate').value || new Date().toISOString().split('T')[0];
+        const switchId = document.getElementById('chartSwitch').value;
+        
+        try {
+            const url = `/api/stats/hourly?date=${date}${switchId ? '&switch_id=' + switchId : ''}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const datasets = [];
+            let colorIndex = 0;
+            
+            for (const [id, info] of Object.entries(data.stats)) {
+                datasets.push({
+                    label: info.name,
+                    data: info.data,
+                    backgroundColor: chartColors[colorIndex % chartColors.length],
+                    borderColor: chartColors[colorIndex % chartColors.length].replace('0.8', '1'),
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false
+                });
+                colorIndex++;
+            }
+            
+            activityChart.data.datasets = datasets;
+            activityChart.update('active');
+            
+        } catch (error) {
+            console.error('Error loading chart data:', error);
+        }
+    }
+
+    // Update stats
+    function updateStats() {
+        let activeCount = 0;
+        let totalUptime = 0;
+        
+        document.querySelectorAll('.switch-card').forEach(card => {
+            if (card.classList.contains('active')) {
+                activeCount++;
+            }
+        });
+        
+        document.getElementById('activeCount').textContent = activeCount;
+        document.getElementById('inactiveCount').textContent = 8 - activeCount;
+    }
+
+    // Timer modal
+    function openTimerModal(switchId) {
+        document.getElementById('timerSwitchId').value = switchId;
+        document.getElementById('customMinutes').value = '';
+        openModal('timerModal');
+    }
+
+    function quickTimer(minutes) {
+        const switchId = document.getElementById('timerSwitchId').value;
+        setTimer(switchId, minutes);
+        closeModal('timerModal');
+    }
+
+    function customTimer() {
+        const minutes = parseInt(document.getElementById('customMinutes').value);
+        if (!minutes || minutes < 1) {
+            showToast('Vui lòng nhập số phút hợp lệ!', 'error');
+            return;
+        }
+        
+        const switchId = document.getElementById('timerSwitchId').value;
+        setTimer(switchId, minutes);
+        closeModal('timerModal');
+    }
+
+    // Socket updates for dashboard
+    socket.on('switch_update', (data) => {
+        const card = document.getElementById(`switch-card-${data.id}`);
+        if (card) {
+            if (data.status === 'ON') {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        }
+        updateStats();
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set today's date for chart
+        document.getElementById('chartDate').value = new Date().toISOString().split('T')[0];
+        
+        initChart();
+        loadChartData();
+        updateStats();
+        
+        // Refresh chart every minute
+        setInterval(loadChartData, 60000);
+    });
+    
+    function updateStats() {
+    let activeCount = 0;
+    let totalUptime = 0;
+    
+    document.querySelectorAll('.switch-card').forEach(card => {
+        if (card.classList.contains('active')) {
+            activeCount++;
+        }
+    });
+    
+    // Cập nhật stats
+    const activeEl = document.getElementById('activeCount');
+    const inactiveEl = document.getElementById('inactiveCount');
+    
+    if (activeEl) {
+        activeEl.textContent = activeCount;
+        animateValue(activeEl, parseInt(activeEl.textContent) || 0, activeCount, 300);
+    }
+    
+    if (inactiveEl) {
+        const inactive = 8 - activeCount;
+        inactiveEl.textContent = inactive;
+        animateValue(inactiveEl, parseInt(inactiveEl.textContent) || 0, inactive, 300);
+    }
+}
+
+// Animate number change
+function animateValue(element, start, end, duration) {
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+    
+    const timer = setInterval(() => {
+        current += increment;
+        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+            current = end;
+            clearInterval(timer);
+        }
+        element.textContent = Math.round(current);
+    }, 16);
+}
+
+// Socket updates cho dashboard với animations
+socket.on('switch_update', (data) => {
+    console.log('📊 Dashboard received update:', data);
+    
+    const card = document.getElementById(`switch-card-${data.id}`);
+    if (card) {
+        // Add pulsing animation
+        card.style.transition = 'all 0.3s ease';
+        
+        if (data.status === 'ON') {
+            card.classList.add('active');
+            // Pulse effect
+            card.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                card.style.transform = 'scale(1)';
+            }, 300);
+        } else {
+            card.classList.remove('active');
+        }
+        
+        // Update toggle button
+        const toggleBtn = card.querySelector('.btn-lg');
+        if (toggleBtn) {
+            if (data.status === 'ON') {
+                toggleBtn.className = 'btn btn-danger btn-lg';
+                toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Tắt';
+            } else {
+                toggleBtn.className = 'btn btn-success btn-lg';
+                toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Bật';
+            }
+        }
+        
+        // Update switch icon
+        const icon = card.querySelector('.switch-icon');
+        if (icon) {
+            if (data.status === 'ON') {
+                icon.style.background = 'rgba(34, 197, 94, 0.15)';
+                icon.style.color = 'var(--success)';
+            } else {
+                icon.style.background = 'var(--bg-tertiary)';
+                icon.style.color = 'var(--text-secondary)';
+            }
+        }
+        
+        // Update uptime
+        const uptimeEl = card.querySelector(`[data-uptime="${data.id}"]`);
+        if (uptimeEl && data.uptime) {
+            const hours = Math.floor(data.uptime / 3600);
+            const minutes = Math.floor((data.uptime % 3600) / 60);
+            uptimeEl.textContent = `${hours}h ${minutes}m`;
+        }
+        
+        // Update last_on
+        const lastOnEl = card.querySelector(`[data-last-on="${data.id}"]`);
+        if (lastOnEl && data.last_on) {
+            lastOnEl.textContent = data.last_on;
+        }
+        
+        // Update auto-off info
+        const autoOffRow = card.querySelector('.info-row:has([data-auto-off])');
+        if (autoOffRow) {
+            if (data.auto_off_timer && data.auto_off_timer.minutes) {
+                autoOffRow.style.display = 'flex';
+                const autoOffValue = autoOffRow.querySelector(`[data-auto-off="${data.id}"]`);
+                if (autoOffValue) {
+                    autoOffValue.textContent = `${data.auto_off_timer.minutes} phút`;
+                }
+            } else {
+                autoOffRow.style.display = 'none';
+            }
+        }
+    }
+    
+    updateStats();
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    // Set today's date for chart
+    const dateInput = document.getElementById('chartDate');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    if (typeof initChart === 'function') {
+        initChart();
+        loadChartData();
+    }
+    
+    updateStats();
+    
+    // Refresh chart every minute
+    setInterval(() => {
+        if (typeof loadChartData === 'function') {
+            loadChartData();
+        }
+    }, 60000);
+    
+    // Request initial status
+    socket.emit('request_status');
+});
+
+console.log('✅ Dashboard real-time updates initialized');
+</script>
+{% endblock %}

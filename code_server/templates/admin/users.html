@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Users - Switch Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .users-table-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    .users-table {
+        width: 100%;
+    }
+
+    .users-table th {
+        background: var(--bg-tertiary);
+        padding: 14px 20px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+
+    .users-table td {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .users-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .users-table tr:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-avatar-table {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .user-info-cell {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-name-cell {
+        font-weight: 500;
+    }
+
+    .user-email-cell {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .role-select {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Quản lý người dùng</h1>
+    <p class="page-subtitle">Xem và quản lý tất cả tài khoản người dùng</p>
+</div>
+
+<div class="users-table-card">
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>Người dùng</th>
+                <th>Trạng thái</th>
+                <th>Vai trò</th>
+                <th>Đăng nhập cuối</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr id="user-row-{{ user.id }}">
+                <td>
+                    <div class="user-cell">
+                        <div class="user-avatar-table">{{ user.username[0].upper() }}</div>
+                        <div class="user-info-cell">
+                            <span class="user-name-cell">{{ user.username }}</span>
+                            <span class="user-email-cell">{{ user.email }}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    {% if user.is_approved %}
+                    <span class="badge badge-success">Đã duyệt</span>
+                    {% else %}
+                    <span class="badge badge-warning">Chờ duyệt</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.is_admin %}
+                    <span class="badge badge-info">Admin</span>
+                    {% else %}
+                    <span class="badge badge-secondary" style="background: var(--bg-tertiary);">User</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else 'Chưa đăng nhập' }}
+                </td>
+                <td>
+                    {{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '-' }}
+                </td>
+                <td>
+                    <div class="flex gap-1">
+                        {% if not user.is_approved %}
+                        <button class="btn btn-success btn-sm" onclick="approveUser({{ user.id }})" title="Phê duyệt">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        {% endif %}
+                        
+                        {% if user.id != current_user.id %}
+                        <button class="btn btn-secondary btn-sm" onclick="toggleAdmin({{ user.id }})" title="Đổi vai trò">
+                            <i class="fas fa-user-shield"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteUser({{ user.id }})" title="Xóa">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function approveUser(userId) {
+        try {
+            const response = await fetch(`/admin/user/${userId}/approve`, {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã phê duyệt người dùng!', 'success');
+                location.reload();
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+
+    async function toggleAdmin(userId) {
+        if (!confirm('Bạn có chắc muốn thay đổi vai trò của người dùng này?')) return;
+        
+        try {
+            const response = await fetch(`/admin/user/${userId}/toggle-admin`, {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast(`Đã ${result.is_admin ? 'cấp' : 'thu hồi'} quyền admin!`, 'success');
+                location.reload();
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+
+    async function deleteUser(userId) {
+        if (!confirm('Bạn có chắc muốn xóa người dùng này? Hành động này không thể hoàn tác!')) return;
+        
+        try {
+            const response = await fetch(`/admin/user/${userId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã xóa người dùng!', 'success');
+                document.getElementById(`user-row-${userId}`).remove();
+            } else {
+                showToast(result.error || 'Không thể xóa người dùng!', 'error');
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+</script>
+{% endblock %}

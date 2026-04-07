@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch hẹn - Switch Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .schedules-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32px;
+    }
+
+    .schedule-table-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    .schedule-table-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .filter-controls {
+        display: flex;
+        gap: 12px;
+    }
+
+    .schedule-row {
+        display: grid;
+        grid-template-columns: 100px 120px 1fr 150px 120px 100px;
+        align-items: center;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border-color);
+        transition: var(--transition);
+    }
+
+    .schedule-row:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .schedule-row:last-child {
+        border-bottom: none;
+    }
+
+    .schedule-time-display {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--accent-primary);
+    }
+
+    .schedule-node {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .schedule-node-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .schedule-details {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .schedule-action-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .schedule-action-badge.on {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+    }
+
+    .schedule-action-badge.off {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+    }
+
+    .repeat-badge {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .repeat-badge i {
+        margin-right: 4px;
+    }
+
+    .schedule-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .status-toggle {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .status-toggle.active {
+        background: var(--success);
+    }
+
+    .status-toggle::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: var(--transition);
+    }
+
+    .status-toggle.active::after {
+        transform: translateX(20px);
+    }
+
+    @media (max-width: 1200px) {
+        .schedule-row {
+            grid-template-columns: 80px 100px 1fr 120px 100px 80px;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .schedule-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Quản lý Lịch hẹn</h1>
+    <p class="page-subtitle">Xem và quản lý tất cả các lịch hẹn của hệ thống</p>
+</div>
+
+<div class="schedules-header">
+    <div class="filter-controls">
+        <select id="filterNode" class="form-control" style="width: auto;" onchange="filterSchedules()">
+            <option value="">Tất cả nodes</option>
+            {% for switch in switches %}
+            <option value="{{ switch.id }}">{{ switch.name }}</option>
+            {% endfor %}
+        </select>
+        <select id="filterAction" class="form-control" style="width: auto;" onchange="filterSchedules()">
+            <option value="">Tất cả hành động</option>
+            <option value="on">Bật</option>
+            <option value="off">Tắt</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addScheduleModal')">
+        <i class="fas fa-plus"></i> Thêm lịch hẹn
+    </button>
+</div>
+
+<div class="schedule-table-card">
+    <div class="schedule-table-header">
+        <h3>Danh sách lịch hẹn ({{ schedules|length }})</h3>
+    </div>
+    
+    <div id="schedulesList">
+        {% if schedules %}
+            {% for schedule in schedules %}
+            <div class="schedule-row" 
+                 data-schedule-id="{{ schedule.id }}"
+                 data-switch-id="{{ schedule.switch_id }}"
+                 data-action="{{ schedule.action }}">
+                <div class="schedule-time-display">{{ schedule.time.strftime('%H:%M') }}</div>
+                
+                <div class="schedule-node">
+                    <div class="schedule-node-icon">
+                        <i class="fas fa-ethernet"></i>
+                    </div>
+                    <span>{{ schedule.switch.name }}</span>
+                </div>
+                
+                <div class="schedule-details">
+                    <span class="schedule-action-badge {{ schedule.action }}">
+                        <i class="fas fa-{% if schedule.action == 'on' %}power-off{% else %}stop{% endif %}"></i>
+                        {{ 'BẬT' if schedule.action == 'on' else 'TẮT' }}
+                        {% if schedule.auto_off %}
+                        <span style="margin-left: 8px; opacity: 0.7;">→ Tự tắt sau {{ schedule.auto_off }}p</span>
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="repeat-badge">
+                    <i class="fas fa-{% if schedule.repeat_type == 'once' %}calendar-day{% elif schedule.repeat_type == 'daily' %}calendar-alt{% else %}calendar-week{% endif %}"></i>
+                    {% if schedule.repeat_type == 'daily' %}Hàng ngày
+                    {% elif schedule.repeat_type == 'weekdays' %}T2-T6
+                    {% elif schedule.repeat_type == 'weekends' %}T7-CN
+                    {% elif schedule.repeat_type == 'once' %}Một lần
+                    {% else %}{{ schedule.repeat_type }}{% endif %}
+                </div>
+                
+                <div class="schedule-status">
+                    <div class="status-toggle {% if schedule.active %}active{% endif %}" 
+                         onclick="toggleScheduleStatus({{ schedule.switch_id }}, {{ schedule.id }}, this)">
+                    </div>
+                </div>
+                
+                <div>
+                    <button class="btn btn-danger btn-sm" onclick="deleteSchedule({{ schedule.switch_id }}, {{ schedule.id }})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state" style="padding: 60px;">
+                <i class="fas fa-calendar-times" style="font-size: 64px; opacity: 0.3; margin-bottom: 20px;"></i>
+                <h3>Chưa có lịch hẹn nào</h3>
+                <p class="text-muted">Nhấn "Thêm lịch hẹn" để tạo lịch mới</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="modal-overlay" id="addScheduleModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Thêm lịch hẹn mới</h3>
+            <button class="modal-close" onclick="closeModal('addScheduleModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="scheduleForm">
+            <div class="form-group">
+                <label class="form-label">Chọn Node</label>
+                <select id="scheduleNode" class="form-control" required>
+                    {% for switch in switches %}
+                    <option value="{{ switch.id }}">{{ switch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Thời gian</label>
+                <input type="time" id="scheduleTime" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Hành động</label>
+                <select id="scheduleAction" class="form-control" onchange="toggleAutoOff()">
+                    <option value="on">Bật</option>
+                    <option value="off">Tắt</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="autoOffGroup">
+                <label class="form-label">Tự động tắt sau (phút) - tùy chọn</label>
+                <input type="number" id="scheduleAutoOff" class="form-control" placeholder="Để trống nếu không cần" min="1">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Lặp lại</label>
+                <select id="scheduleRepeat" class="form-control">
+                    <option value="once">Một lần</option>
+                    <option value="daily">Hàng ngày</option>
+                    <option value="weekdays">Các ngày trong tuần (T2-T6)</option>
+                    <option value="weekends">Cuối tuần (T7-CN)</option>
+                </select>
+            </div>
+            
+            <div class="flex gap-2 mt-3">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addScheduleModal')" style="flex:1;">Hủy</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;">
+                    <i class="fas fa-plus"></i> Thêm lịch
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleAutoOff() {
+        const action = document.getElementById('scheduleAction').value;
+        document.getElementById('autoOffGroup').style.display = action === 'on' ? 'block' : 'none';
+    }
+
+    function filterSchedules() {
+        const nodeId = document.getElementById('filterNode').value;
+        const action = document.getElementById('filterAction').value;
+        
+        document.querySelectorAll('.schedule-row').forEach(row => {
+            const rowNodeId = row.dataset.switchId;
+            const rowAction = row.dataset.action;
+            
+            let show = true;
+            if (nodeId && rowNodeId !== nodeId) show = false;
+            if (action && rowAction !== action) show = false;
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+
+    async function toggleScheduleStatus(switchId, scheduleId, element) {
+        const isActive = element.classList.contains('active');
+        
+        try {
+            const response = await fetch(`/api/switch/${switchId}/schedule/${scheduleId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: !isActive })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                element.classList.toggle('active');
+                showToast(`Đã ${!isActive ? 'kích hoạt' : 'vô hiệu hóa'} lịch hẹn!`, 'success');
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+
+    async function deleteSchedule(switchId, scheduleId) {
+        if (!confirm('Bạn có chắc muốn xóa lịch hẹn này?')) return;
+        
+        try {
+            const response = await fetch(`/api/switch/${switchId}/schedule/${scheduleId}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã xóa lịch hẹn!', 'success');
+                document.querySelector(`[data-schedule-id="${scheduleId}"]`).remove();
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+
+    document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const switchId = document.getElementById('scheduleNode').value;
+        const data = {
+            time: document.getElementById('scheduleTime').value,
+            action: document.getElementById('scheduleAction').value,
+            repeat: document.getElementById('scheduleRepeat').value
+        };
+        
+        const autoOff = document.getElementById('scheduleAutoOff').value;
+        if (autoOff && data.action === 'on') {
+            data.auto_off = parseInt(autoOff);
+        }
+        
+        try {
+            const response = await fetch(`/api/switch/${switchId}/schedule`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã thêm lịch hẹn!', 'success');
+                closeModal('addScheduleModal');
+                location.reload();
+            } else {
+                showToast(result.error || 'Có lỗi xảy ra!', 'error');
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', toggleAutoOff);
+</script>
+{% endblock %}

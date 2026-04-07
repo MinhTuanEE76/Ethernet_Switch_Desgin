@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ethernet Switch Manager{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252542;
+            --bg-card: #1e1e35;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6b6b80;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --success: #22c55e;
+            --success-glow: rgba(34, 197, 94, 0.3);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.3);
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            --radius: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(34, 197, 94, 0.05) 0%, transparent 30%);
+            animation: bgFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes bgFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(2%, 2%) rotate(1deg); }
+            50% { transform: translate(0, 4%) rotate(0deg); }
+            75% { transform: translate(-2%, 2%) rotate(-1deg); }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            z-index: 100;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 24px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: var(--transition);
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .user-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent-primary);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Grid System */
+        .grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+        @media (max-width: 1200px) {
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+        }
+
+        /* Status Indicators */
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.on {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success-glow);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.off {
+            background: var(--text-muted);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Switch Toggle */
+        .switch-toggle {
+            position: relative;
+            width: 60px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid var(--border-color);
+        }
+
+        .switch-toggle.on {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .switch-toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            transition: var(--transition);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .switch-toggle.on::after {
+            transform: translateX(28px);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Alerts / Toasts */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+            min-width: 300px;
+        }
+
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        .toast.warning { border-left: 4px solid var(--warning); }
+        .toast.info { border-left: 4px solid var(--info); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .badge-warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge-info { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 50%;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--bg-tertiary);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Utility Classes */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+        .text-warning { color: var(--warning); }
+        .text-muted { color: var(--text-muted); }
+        .mt-1 { margin-top: 8px; }
+        .mt-2 { margin-top: 16px; }
+        .mt-3 { margin-top: 24px; }
+        .mb-1 { margin-bottom: 8px; }
+        .mb-2 { margin-bottom: 16px; }
+        .mb-3 { margin-bottom: 24px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-1 { gap: 8px; }
+        .gap-2 { gap: 16px; }
+        .gap-3 { gap: 24px; }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 101;
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('main.dashboard') }}" class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+                <span class="logo-text">Switch Manager</span>
+            </a>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-title">Menu chính</div>
+                <a href="{{ url_for('main.dashboard') }}" class="nav-item {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('main.schedules') }}" class="nav-item {% if request.endpoint == 'main.schedules' %}active{% endif %}">
+                    <i class="fas fa-clock"></i>
+                    <span>Lịch hẹn</span>
+                </a>
+                <a href="{{ url_for('main.history') }}" class="nav-item {% if request.endpoint == 'main.history' %}active{% endif %}">
+                    <i class="fas fa-history"></i>
+                    <span>Lịch sử</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-section-title">Nodes</div>
+                {% for i in range(1, 9) %}
+                <a href="{{ url_for('main.node_detail', node_id=i) }}" class="nav-item {% if request.endpoint == 'main.node_detail' and request.view_args.get('node_id') == i %}active{% endif %}">
+                    <i class="fas fa-ethernet"></i>
+                    <span>Node {{ i }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            
+            {% if current_user.is_admin %}
+            <div class="nav-section">
+                <div class="nav-section-title">Quản trị</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if 'admin' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-cog"></i>
+                    <span>Admin Panel</span>
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="nav-item">
+                    <i class="fas fa-users"></i>
+                    <span>Quản lý Users</span>
+                </a>
+            </div>
+            {% endif %}
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    {{ current_user.username[0].upper() }}
+                </div>
+                <div class="user-details">
+                    <div class="user-name">{{ current_user.username }}</div>
+                    <div class="user-role">{{ 'Admin' if current_user.is_admin else 'User' }}</div>
+                </div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Đăng xuất</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // Socket.IO Connection
+        // Thêm vào phần <script> trong base.html, thay thế đoạn socket code hiện tại
+
+// Socket.IO Connection với auto-reconnect
+const socket = io({
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: 5
+});
+
+socket.on('connect', () => {
+    console.log('✅ Connected to server');
+    socket.emit('request_status');
+    showConnectionStatus(true);
+});
+
+socket.on('disconnect', () => {
+    console.log('❌ Disconnected from server');
+    showConnectionStatus(false);
+});
+
+socket.on('connect_error', (error) => {
+    console.error('Connection error:', error);
+    showConnectionStatus(false);
+});
+
+// Hiển thị trạng thái kết nối
+function showConnectionStatus(connected) {
+    const indicator = document.querySelector('.realtime-indicator');
+    if (indicator) {
+        const dot = indicator.querySelector('.realtime-dot');
+        if (connected) {
+            dot.style.background = 'var(--success)';
+            indicator.querySelector('span:last-child').textContent = 'Connected';
+        } else {
+            dot.style.background = 'var(--danger)';
+            indicator.querySelector('span:last-child').textContent = 'Disconnected';
+        }
+    }
+}
+
+// Cập nhật UI khi switch thay đổi
+socket.on('switch_update', (data) => {
+    console.log('🔄 Switch update:', data);
+    updateSwitchUI(data);
+    updateSwitchCard(data);
+    updateNodeDetail(data);
+});
+
+// Cập nhật tất cả switches
+socket.on('all_switches', (data) => {
+    console.log('📊 All switches:', data);
+    Object.values(data).forEach(switchData => {
+        updateSwitchUI(switchData);
+        updateSwitchCard(switchData);
+    });
+});
+
+// Tắt tất cả switches
+socket.on('all_switches_off', () => {
+    console.log('⚠️ All switches turned off');
+    document.querySelectorAll('.switch-toggle').forEach(toggle => {
+        toggle.classList.remove('on');
+    });
+    document.querySelectorAll('.status-dot').forEach(dot => {
+        dot.classList.remove('on');
+        dot.classList.add('off');
+    });
+    document.querySelectorAll('.switch-card').forEach(card => {
+        card.classList.remove('active');
+    });
+});
+
+// Hàm cập nhật UI chính
+function updateSwitchUI(data) {
+    // Cập nhật toggle switch
+    const toggle = document.querySelector(`[data-switch-id="${data.id}"]`);
+    if (toggle) {
+        if (data.status === 'ON') {
+            toggle.classList.add('on');
+        } else {
+            toggle.classList.remove('on');
+        }
+    }
+    
+    // Cập nhật status dot
+    const statusDot = document.querySelector(`[data-status-dot="${data.id}"]`);
+    if (statusDot) {
+        statusDot.classList.toggle('on', data.status === 'ON');
+        statusDot.classList.toggle('off', data.status !== 'ON');
+    }
+    
+    // Cập nhật status text/badge
+    const statusText = document.querySelector(`[data-status-text="${data.id}"]`);
+    if (statusText) {
+        statusText.textContent = data.status;
+        statusText.className = data.status === 'ON' ? 'badge badge-success' : 'badge badge-danger';
+    }
+    
+    // Cập nhật uptime
+    const uptimeEl = document.querySelector(`[data-uptime="${data.id}"]`);
+    if (uptimeEl && data.uptime) {
+        const hours = Math.floor(data.uptime / 3600);
+        const minutes = Math.floor((data.uptime % 3600) / 60);
+        uptimeEl.textContent = `${hours}h ${minutes}m`;
+    }
+    
+    // Cập nhật last_on
+    const lastOnEl = document.querySelector(`[data-last-on="${data.id}"]`);
+    if (lastOnEl && data.last_on) {
+        lastOnEl.textContent = data.last_on;
+    }
+    
+    // Cập nhật auto-off timer
+    const autoOffEl = document.querySelector(`[data-auto-off="${data.id}"]`);
+    if (autoOffEl) {
+        if (data.auto_off_timer && data.auto_off_timer.minutes) {
+            autoOffEl.textContent = `${data.auto_off_timer.minutes} phút`;
+            autoOffEl.parentElement.style.display = 'flex';
+        } else {
+            autoOffEl.parentElement.style.display = 'none';
+        }
+    }
+}
+
+// Cập nhật switch card (dashboard)
+function updateSwitchCard(data) {
+    const card = document.getElementById(`switch-card-${data.id}`);
+    if (!card) return;
+    
+    // Cập nhật class active
+    if (data.status === 'ON') {
+        card.classList.add('active');
+    } else {
+        card.classList.remove('active');
+    }
+    
+    // Cập nhật icon
+    const icon = card.querySelector('.switch-icon');
+    if (icon) {
+        if (data.status === 'ON') {
+            icon.style.background = 'rgba(34, 197, 94, 0.15)';
+            icon.style.color = 'var(--success)';
+        } else {
+            icon.style.background = 'var(--bg-tertiary)';
+            icon.style.color = 'var(--text-secondary)';
+        }
+    }
+    
+    // Cập nhật nút toggle text
+    const toggleBtn = card.querySelector('.btn-lg');
+    if (toggleBtn) {
+        if (data.status === 'ON') {
+            toggleBtn.className = 'btn btn-danger btn-lg';
+            toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Tắt';
+        } else {
+            toggleBtn.className = 'btn btn-success btn-lg';
+            toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Bật';
+        }
+    }
+}
+
+// Cập nhật node detail page
+function updateNodeDetail(data) {
+    // Chỉ cập nhật nếu đang ở trang node detail
+    const nodeIcon = document.getElementById('nodeIcon');
+    const nodeStatus = document.getElementById('nodeStatus');
+    const toggleBtn = document.getElementById('toggleBtn');
+    
+    if (!nodeIcon || !nodeStatus || !toggleBtn) return;
+    
+    // Lấy switchId từ page (nếu có)
+    if (typeof switchId !== 'undefined' && data.id !== switchId) return;
+    
+    if (data.status === 'ON') {
+        nodeIcon.classList.add('active');
+        nodeStatus.className = 'status-badge-large on';
+        nodeStatus.innerHTML = '<i class="fas fa-check-circle"></i> ON';
+        toggleBtn.className = 'btn btn-danger btn-lg';
+        toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Tắt';
+    } else {
+        nodeIcon.classList.remove('active');
+        nodeStatus.className = 'status-badge-large off';
+        nodeStatus.innerHTML = '<i class="fas fa-times-circle"></i> OFF';
+        toggleBtn.className = 'btn btn-success btn-lg';
+        toggleBtn.innerHTML = '<i class="fas fa-power-off"></i> Bật';
+    }
+}
+
+// Toggle switch với animation
+async function toggleSwitch(switchId) {
+    try {
+        // Disable button để tránh spam
+        const toggle = document.querySelector(`[data-switch-id="${switchId}"]`);
+        if (toggle) {
+            toggle.style.pointerEvents = 'none';
+            toggle.style.opacity = '0.6';
+        }
+        
+        const response = await fetch(`/api/switch/${switchId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Node ${switchId} đã ${data.status === 'ON' ? 'BẬT' : 'TẮT'}`, 'success');
+            
+            // Socket sẽ tự động cập nhật UI, nhưng có thể force update ngay
+            setTimeout(() => {
+                socket.emit('request_status');
+            }, 100);
+        } else {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+        
+        // Re-enable button
+        setTimeout(() => {
+            if (toggle) {
+                toggle.style.pointerEvents = '';
+                toggle.style.opacity = '';
+            }
+        }, 500);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('Có lỗi xảy ra!', 'error');
+    }
+}
+
+// Turn off all switches
+async function turnOffAll() {
+    if (!confirm('Bạn có chắc muốn tắt tất cả các node?')) return;
+    
+    try {
+        const response = await fetch('/api/switch/all/off', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast('Đã tắt tất cả các node!', 'success');
+        }
+    } catch (error) {
+        showToast('Có lỗi xảy ra!', 'error');
+    }
+}
+
+// Set timer
+async function setTimer(switchId, minutes) {
+    try {
+        const response = await fetch(`/api/switch/${switchId}/timer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ minutes: parseInt(minutes) })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast(`Đã bật Node ${switchId} với hẹn giờ ${minutes} phút`, 'success');
+        }
+    } catch (error) {
+        showToast('Có lỗi xảy ra!', 'error');
+    }
+}
+
+// Toast notification với animation mượt hơn
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    }[type] || 'fa-info-circle';
+    
+    toast.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <span>${message}</span>
+    `;
+    
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    container.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => {
+        toast.style.transition = 'all 0.3s ease';
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(0)';
+    }, 10);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Sidebar toggle for mobile
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
+}
+
+// Modal functions
+function openModal(modalId) {
+    document.getElementById(modalId).classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('active');
+    }
+});
+
+// Format duration
+function formatDuration(seconds) {
+    if (!seconds) return '-';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+    } else {
+        return `${secs}s`;
+    }
+}
+
+// Request status every 5 seconds as backup
+setInterval(() => {
+    if (socket.connected) {
+        socket.emit('request_status');
+    }
+}, 5000);
+
+// Page visibility: request status when page becomes visible
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && socket.connected) {
+        socket.emit('request_status');
+    }
+});
+
+console.log('🚀 Socket.IO client initialized with real-time updates');
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+

@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch sử - Switch Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .history-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+        padding: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-group label {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .history-table-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    .history-table-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .history-count {
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .history-table {
+        width: 100%;
+    }
+
+    .history-table th {
+        background: var(--bg-tertiary);
+        padding: 14px 20px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+
+    .history-table td {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .history-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .history-table tr:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .action-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .action-badge.on {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+    }
+
+    .action-badge.off {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger);
+    }
+
+    .action-badge.scheduled {
+        background: rgba(59, 130, 246, 0.15);
+        color: var(--info);
+    }
+
+    .action-badge.auto {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--warning);
+    }
+
+    .trigger-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 20px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .page-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .page-btn:hover {
+        background: var(--accent-primary);
+        border-color: var(--accent-primary);
+        color: white;
+    }
+
+    .page-btn.active {
+        background: var(--accent-primary);
+        border-color: var(--accent-primary);
+        color: white;
+    }
+
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .page-info {
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Lịch sử hoạt động</h1>
+    <p class="page-subtitle">Xem lịch sử bật/tắt của tất cả các node</p>
+</div>
+
+<!-- Filters -->
+<div class="history-filters">
+    <div class="filter-group">
+        <label>Node</label>
+        <select id="filterSwitch" class="form-control" style="min-width: 150px;">
+            <option value="">Tất cả</option>
+            {% for switch in switches %}
+            <option value="{{ switch.id }}">{{ switch.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>Hành động</label>
+        <select id="filterAction" class="form-control" style="min-width: 150px;">
+            <option value="">Tất cả</option>
+            <option value="ON">Bật</option>
+            <option value="OFF">Tắt</option>
+            <option value="SCHEDULED">Lịch hẹn</option>
+            <option value="AUTO">Tự động</option>
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>Từ ngày</label>
+        <input type="date" id="filterDateFrom" class="form-control">
+    </div>
+    
+    <div class="filter-group">
+        <label>Đến ngày</label>
+        <input type="date" id="filterDateTo" class="form-control">
+    </div>
+    
+    <div class="filter-group" style="justify-content: flex-end;">
+        <label>&nbsp;</label>
+        <div class="flex gap-2">
+            <button class="btn btn-primary" onclick="loadHistory()">
+                <i class="fas fa-search"></i> Lọc
+            </button>
+            <button class="btn btn-secondary" onclick="exportCSV()">
+                <i class="fas fa-download"></i> Xuất CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- History Table -->
+<div class="history-table-card">
+    <div class="history-table-header">
+        <h3>Danh sách lịch sử</h3>
+        <span class="history-count" id="historyCount">Đang tải...</span>
+    </div>
+    
+    <div class="table-container">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Node</th>
+                    <th>Hành động</th>
+                    <th>Thời lượng</th>
+                    <th>Nguồn</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                <tr>
+                    <td colspan="5" class="text-center">
+                        <div class="spinner" style="margin: 20px auto;"></div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="pagination" id="pagination"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    const perPage = 50;
+
+    function getActionBadgeClass(action) {
+        if (action.includes('ON')) return 'on';
+        if (action.includes('OFF')) return 'off';
+        if (action.includes('SCHEDULED')) return 'scheduled';
+        if (action.includes('AUTO')) return 'auto';
+        return '';
+    }
+
+    function formatDuration(seconds) {
+        if (!seconds) return '-';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+        if (minutes > 0) return `${minutes}m ${secs}s`;
+        return `${secs}s`;
+    }
+
+    async function loadHistory(page = 1) {
+        currentPage = page;
+        
+        const params = new URLSearchParams();
+        params.append('page', page);
+        params.append('per_page', perPage);
+        
+        const switchId = document.getElementById('filterSwitch').value;
+        const action = document.getElementById('filterAction').value;
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        
+        if (switchId) params.append('switch_id', switchId);
+        if (action) params.append('action', action);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        
+        try {
+            const response = await fetch(`/api/history?${params.toString()}`);
+            const data = await response.json();
+            
+            renderHistory(data);
+        } catch (error) {
+            console.error('Error loading history:', error);
+            showToast('Lỗi khi tải lịch sử!', 'error');
+        }
+    }
+
+    function renderHistory(data) {
+        const tbody = document.getElementById('historyTableBody');
+        const pagination = document.getElementById('pagination');
+        
+        document.getElementById('historyCount').textContent = `Tổng: ${data.total} bản ghi`;
+        
+        if (data.history.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center" style="padding: 40px;">
+                        <i class="fas fa-inbox" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;"></i>
+                        Không tìm thấy bản ghi nào
+                    </td>
+                </tr>
+            `;
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        tbody.innerHTML = data.history.map(item => `
+            <tr>
+                <td>
+                    <div style="font-weight: 500;">${item.timestamp}</div>
+                </td>
+                <td>
+                    <div class="flex items-center gap-2">
+                        <div style="width: 32px; height: 32px; background: var(--bg-tertiary); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-ethernet" style="font-size: 14px; color: var(--text-muted);"></i>
+                        </div>
+                        ${item.switch_name || 'N/A'}
+                    </div>
+                </td>
+                <td>
+                    <span class="action-badge ${getActionBadgeClass(item.action)}">
+                        <i class="fas fa-${item.action.includes('ON') ? 'power-off' : 'stop'}"></i>
+                        ${item.action}
+                    </span>
+                </td>
+                <td>${formatDuration(item.duration)}</td>
+                <td>
+                    <span class="trigger-badge">${item.triggered_by || 'N/A'}</span>
+                </td>
+            </tr>
+        `).join('');
+        
+        // Render pagination
+        let paginationHtml = '';
+        
+        if (data.pages > 1) {
+            paginationHtml += `
+                <button class="page-btn" onclick="loadHistory(1)" ${currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button class="page-btn" onclick="loadHistory(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-angle-left"></i>
+                </button>
+            `;
+            
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(data.pages, currentPage + 2);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHtml += `
+                    <button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="loadHistory(${i})">${i}</button>
+                `;
+            }
+            
+            paginationHtml += `
+                <button class="page-btn" onclick="loadHistory(${currentPage + 1})" ${currentPage === data.pages ? 'disabled' : ''}>
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button class="page-btn" onclick="loadHistory(${data.pages})" ${currentPage === data.pages ? 'disabled' : ''}>
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            `;
+            
+            paginationHtml += `<span class="page-info">Trang ${currentPage} / ${data.pages}</span>`;
+        }
+        
+        pagination.innerHTML = paginationHtml;
+    }
+
+    function exportCSV() {
+        const params = new URLSearchParams();
+        
+        const switchId = document.getElementById('filterSwitch').value;
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        
+        if (switchId) params.append('switch_id', switchId);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        
+        window.location.href = `/api/history/export?${params.toString()}`;
+        showToast('Đang tải xuống file CSV...', 'info');
+    }
+
+    // Set default dates
+    document.addEventListener('DOMContentLoaded', () => {
+        const today = new Date().toISOString().split('T')[0];
+        const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        document.getElementById('filterDateFrom').value = lastWeek;
+        document.getElementById('filterDateTo').value = today;
+        
+        // Check URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('switch_id')) {
+            document.getElementById('filterSwitch').value = urlParams.get('switch_id');
+        }
+        
+        loadHistory();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Switch Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 1200px) {
+        .admin-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .admin-stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        transition: var(--transition);
+    }
+
+    .admin-stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .admin-stat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .admin-stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .admin-stat-value {
+        font-size: 36px;
+        font-weight: 700;
+    }
+
+    .admin-stat-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-top: 4px;
+    }
+
+    .pending-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 24px;
+        height: 24px;
+        background: var(--danger);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .admin-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    @media (max-width: 1000px) {
+        .admin-grid { grid-template-columns: 1fr; }
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .quick-action-btn {
+        padding: 20px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: var(--transition);
+    }
+
+    .quick-action-btn:hover {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--accent-primary);
+    }
+
+    .quick-action-btn i {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-gradient);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pending-users-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .pending-user-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius);
+    }
+
+    .pending-user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .pending-user-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+    }
+
+    .pending-user-actions {
+        display: flex;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Admin Dashboard</h1>
+    <p class="page-subtitle">Quản lý hệ thống và người dùng</p>
+</div>
+
+<!-- Admin Stats -->
+<div class="admin-stats-grid">
+    <div class="admin-stat-card">
+        <div class="admin-stat-header">
+            <div class="admin-stat-icon" style="background: rgba(99, 102, 241, 0.15); color: var(--accent-primary);">
+                <i class="fas fa-users"></i>
+            </div>
+            {% if pending_users > 0 %}
+            <div style="position: relative;">
+                <span class="pending-badge">{{ pending_users }}</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="admin-stat-value">{{ users|length }}</div>
+        <div class="admin-stat-label">Tổng người dùng</div>
+    </div>
+    
+    <div class="admin-stat-card">
+        <div class="admin-stat-header">
+            <div class="admin-stat-icon" style="background: rgba(34, 197, 94, 0.15); color: var(--success);">
+                <i class="fas fa-power-off"></i>
+            </div>
+        </div>
+        <div class="admin-stat-value">{{ active_switches }}</div>
+        <div class="admin-stat-label">Node đang hoạt động</div>
+    </div>
+    
+    <div class="admin-stat-card">
+        <div class="admin-stat-header">
+            <div class="admin-stat-icon" style="background: rgba(59, 130, 246, 0.15); color: var(--info);">
+                <i class="fas fa-ethernet"></i>
+            </div>
+        </div>
+        <div class="admin-stat-value">{{ switches|length }}</div>
+        <div class="admin-stat-label">Tổng số Node</div>
+    </div>
+    
+    <div class="admin-stat-card">
+        <div class="admin-stat-header">
+            <div class="admin-stat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--warning);">
+                <i class="fas fa-history"></i>
+            </div>
+        </div>
+        <div class="admin-stat-value">{{ total_history }}</div>
+        <div class="admin-stat-label">Bản ghi lịch sử</div>
+    </div>
+</div>
+
+<div class="admin-grid">
+    <!-- Quick Actions -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Thao tác nhanh</h3>
+        </div>
+        <div class="quick-actions">
+            <a href="{{ url_for('admin.users') }}" class="quick-action-btn">
+                <i class="fas fa-users-cog"></i>
+                <div>
+                    <div style="font-weight: 600;">Quản lý Users</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Phê duyệt, xóa người dùng</div>
+                </div>
+            </a>
+            <a href="{{ url_for('main.dashboard') }}" class="quick-action-btn">
+                <i class="fas fa-th-large"></i>
+                <div>
+                    <div style="font-weight: 600;">Dashboard</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Xem trạng thái nodes</div>
+                </div>
+            </a>
+            <a href="{{ url_for('main.history') }}" class="quick-action-btn">
+                <i class="fas fa-history"></i>
+                <div>
+                    <div style="font-weight: 600;">Lịch sử</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Xem lịch sử hoạt động</div>
+                </div>
+            </a>
+            <a href="{{ url_for('main.schedules') }}" class="quick-action-btn">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <div style="font-weight: 600;">Lịch hẹn</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Quản lý lịch hẹn</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Pending Users -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Người dùng chờ duyệt</h3>
+            <span class="badge badge-warning">{{ pending_users }}</span>
+        </div>
+        
+        <div class="pending-users-list" id="pendingUsersList">
+            {% for user in users if not user.is_approved %}
+            <div class="pending-user-item" id="pending-user-{{ user.id }}">
+                <div class="pending-user-info">
+                    <div class="pending-user-avatar">{{ user.username[0].upper() }}</div>
+                    <div>
+                        <div style="font-weight: 500;">{{ user.username }}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">{{ user.email }}</div>
+                    </div>
+                </div>
+                <div class="pending-user-actions">
+                    <button class="btn btn-success btn-sm" onclick="approveUser({{ user.id }})">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectUser({{ user.id }})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 40px; text-align: center;">
+                <i class="fas fa-check-circle" style="font-size: 48px; color: var(--success); opacity: 0.5; margin-bottom: 16px;"></i>
+                <p>Không có người dùng chờ duyệt</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function approveUser(userId) {
+        try {
+            const response = await fetch(`/admin/user/${userId}/approve`, {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã phê duyệt người dùng!', 'success');
+                document.getElementById(`pending-user-${userId}`).remove();
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+
+    async function rejectUser(userId) {
+        if (!confirm('Bạn có chắc muốn từ chối người dùng này?')) return;
+        
+        try {
+            const response = await fetch(`/admin/user/${userId}/reject`, {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                showToast('Đã từ chối người dùng!', 'success');
+                document.getElementById(`pending-user-${userId}`).remove();
+            }
+        } catch (error) {
+            showToast('Có lỗi xảy ra!', 'error');
+        }
+    }
+</script>
+{% endblock %}
