@@ -120,7 +120,7 @@ void scheduler_auto_off_task(void *pv) {
         vTaskDelay(pdMS_TO_TICKS(1000));
         int expire = scheduler_get_auto_off_expire();
         ESP_LOGI("\nAUTO_OFF_TASK","getted expire from get_auto_off_expire");
-        if (expire < 0){
+        if (expire < 0){ 
             ESP_LOGI("AUTO_OFF_TASK","Chua co lich auto_off de thuc thi");
             continue;
         } 
